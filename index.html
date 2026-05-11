@@ -1036,46 +1036,17 @@
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
   // ── ROUTING ──
-  const isDesktop = () => window.innerWidth >= 900;
-
   function showList() {
-    if (isDesktop()) {
-      renderList();
-    } else {
-      document.getElementById('viewList').classList.add('active');
-      document.getElementById('viewDetail').classList.remove('active');
-      renderList();
-    }
+    document.getElementById('viewList').classList.add('active');
+    document.getElementById('viewDetail').classList.remove('active');
+    renderList();
   }
 
   function showDetail(id) {
     currentPersonId = id;
-    if (isDesktop()) {
-      renderList(); // re-render list to show selected highlight
-      renderDetail();
-      document.getElementById('desktopDetailEmpty').style.display = 'none';
-      document.getElementById('viewDetail').style.display = 'block';
-    } else {
-      document.getElementById('viewList').classList.remove('active');
-      document.getElementById('viewDetail').classList.add('active');
-      renderDetail();
-    }
-  }
-
-  function setupDesktop() {
-    if (!isDesktop()) return;
-    const shell = document.getElementById('desktopShell');
-    const left = document.getElementById('desktopLeft');
-    const right = document.getElementById('desktopRight');
-    const listEl = document.getElementById('viewList');
-    const detailEl = document.getElementById('viewDetail');
-    shell.style.display = 'grid';
-    left.appendChild(listEl);
-    right.appendChild(detailEl);
-    listEl.style.display = 'block';
-    detailEl.style.display = 'none';
-    detailEl.style.maxWidth = 'none';
-    detailEl.style.paddingBottom = '48px';
+    document.getElementById('viewList').classList.remove('active');
+    document.getElementById('viewDetail').classList.add('active');
+    renderDetail();
   }
 
   // ── RENDER LIST ──
