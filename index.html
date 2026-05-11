@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My People">
+<title>My People</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1916;
+    --surface2: #252320;
+    --border: #2e2c28;
+    --blue: #a0c4f5;
+    --blue-dim: #1e2e45;
+    --purple: #c4a0f5;
+    --purple-dim: #2a1e45;
+    --green: #b8f5a0;
+    --green-dim: #1e3520;
+    --amber: #f5d87a;
+    --amber-dim: #3a2e10;
+    --red: #f5a0a0;
+    --red-dim: #3a1e1e;
+    --text: #f0ece4;
+    --text-muted: #7a7670;
+    --text-faint: #3d3b37;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.5;
+  }
+
+  /* ── VIEWS ── */
+  .view { display: none; max-width: 430px; margin: 0 auto; padding-bottom: 48px; }
+  .view.active { display: block; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 56px 24px 0;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .header-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .btn-add {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-add:active { transform: scale(0.92); background: var(--border); }
+
+  /* ── SEARCH ── */
+  .search-wrap {
+    margin: 20px 16px 0;
+    position: relative;
+    animation: fadeUp 0.4s 0.05s ease both;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+    display: block;
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    padding: 12px 16px 12px 34px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input::placeholder { color: var(--text-faint); }
+  .search-input:focus { border-color: var(--amber); }
+
+  /* ── CATEGORY PILLS ── */
+  .cat-scroll {
+    display: flex;
+    gap: 8px;
+    padding: 16px 16px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    animation: fadeUp 0.4s 0.1s ease both;
+  }
+
+  .cat-scroll::-webkit-scrollbar { display: none; }
+
+  .cat-pill {
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: none;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .cat-pill.active, .cat-pill:active {
+    color: var(--text);
+    border-color: var(--amber);
+    background: var(--amber-dim);
+  }
+
+  /* ── PEOPLE LIST ── */
+  .people-list {
+    margin: 16px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeUp 0.4s 0.15s ease both;
+  }
+
+  .person-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .person-card:active { transform: scale(0.98); border-color: var(--amber); }
+
+  .person-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 800;
+    flex-shrink: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .person-info { flex: 1; min-width: 0; }
+
+  .person-name {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .person-last {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .person-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .person-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ── CATEGORY BADGE ── */
+  .cat-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--text-faint);
+  }
+
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+  .empty-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    line-height: 1.8;
+  }
+
+  /* ── DETAIL VIEW ── */
+  .detail-header {
+    padding: 56px 24px 0;
+    animation: fadeUp 0.35s ease both;
+  }
+
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+    transition: color 0.15s;
+  }
+
+  .btn-back:active { color: var(--text); }
+
+  .detail-person-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 6px;
+  }
+
+  .detail-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .detail-name {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .detail-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-icon-sm {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-icon-sm:active { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+
+  .detail-cat-badge {
+    margin-bottom: 20px;
+    margin-left: 72px;
+  }
+
+  /* ── ENTRIES ── */
+  .entries-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    margin-top: 24px;
+    margin-bottom: 12px;
+  }
+
+  .entries-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .btn-add-entry {
+    background: var(--amber-dim);
+    border: 1px solid rgba(245,216,122,0.2);
+    border-radius: 20px;
+    color: var(--amber);
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .btn-add-entry:active { transform: scale(0.96); }
+
+  .entries-list {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .entry-section {}
+
+  .entry-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .entry-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+  }
+
+  .btn-add-section {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .btn-add-section:active { color: var(--text); border-color: var(--amber); background: var(--amber-dim); }
+
+  .entry-section-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .entry-row {
+    position: relative;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .entry-row-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .entry-row-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+
+
+  .entry-wrap {
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 0;
+  }
+
+  .entry-delete-bg {
+    position: absolute;
+    inset: 0;
+    background: var(--red-dim);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 20px;
+    color: var(--red);
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+  }
+
+  .entry-inner {
+    touch-action: pan-y;
+    transition: transform 0.2s ease;
+    will-change: transform;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .entry-inner.swiping { transition: none; }
+
+  .entry-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .entry-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+
+  .entry-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+
+  .entry-delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+
+  .entry-delete-btn:active { color: var(--red); }
+
+  .entry-edit-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+
+  .entry-edit-btn:active { color: var(--amber); }
+
+  .entry-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    padding: 24px 24px 48px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 24px;
+  }
+
+  .modal-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+  }
+
+  .input-group { margin-bottom: 16px; }
+
+  .input-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  input[type="text"], input[type="password"], textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+
+  .search-input[type="text"], .search-input[type="password"] {
+    padding: 12px 16px 12px 34px !important;
+    font-size: 15px;
+    background: var(--surface);
+  }
+
+  textarea {
+    resize: none;
+    min-height: 100px;
+    line-height: 1.6;
+  }
+
+  select option { background: var(--surface2); }
+  input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus { border-color: var(--amber); }
+
+  .tag-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .tag-option {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: none;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .tag-option.selected {
+    color: var(--text);
+    border-color: var(--amber);
+    background: var(--amber-dim);
+  }
+
+  .btn-confirm {
+    width: 100%;
+    border: none;
+    border-radius: var(--radius);
+    padding: 18px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--amber);
+    color: #1a1200;
+    margin-top: 8px;
+    transition: transform 0.15s;
+  }
+
+  .btn-confirm:active { transform: scale(0.98); }
+
+  .btn-cancel {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 14px;
+    margin-top: 4px;
+  }
+
+  /* ── CAT COLORS ── */
+  .cat-work    { background: var(--blue-dim);   color: var(--blue);   border-color: rgba(160,196,245,0.2); }
+  .cat-friend  { background: var(--green-dim);  color: var(--green);  border-color: rgba(184,245,160,0.2); }
+  .cat-family  { background: var(--purple-dim); color: var(--purple); border-color: rgba(196,160,245,0.2); }
+  .cat-other   { background: var(--amber-dim);  color: var(--amber);  border-color: rgba(245,216,122,0.2); }
+
+  .avatar-work   { background: var(--blue-dim);   color: var(--blue); }
+  .avatar-friend { background: var(--green-dim);  color: var(--green); }
+  .avatar-family { background: var(--purple-dim); color: var(--purple); }
+  .avatar-other  { background: var(--amber-dim);  color: var(--amber); }
+
+  /* ── FLASH ── */
+  .flash {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 300;
+    transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+    white-space: nowrap;
+    max-width: 90vw;
+  }
+
+  .flash.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-scroll { overflow-y: visible; }
+</style>
+</head>
+<body>
+
+<!-- ══ VIEW: LOGIN ══ -->
+<div class="view active" id="viewLogin">
+  <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;max-width:430px;margin:0 auto">
+    <div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;margin-bottom:6px">My People</div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:0.1em;margin-bottom:48px">PERSONAL CRM</div>
+
+    <div style="width:100%">
+      <div class="input-group">
+        <label class="input-label">Email</label>
+        <input type="text" id="loginEmail" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="loginError" style="color:var(--red);font-size:13px;font-family:'DM Mono',monospace;margin-bottom:12px;display:none"></div>
+      <button class="btn-confirm" id="loginBtn" onclick="doLogin()">Sign in</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VIEW: PEOPLE LIST ══ -->
+<div class="view" id="viewList">
+  <div class="header">
+    <div class="header-label">Personal CRM</div>
+    <div class="header-row">
+      <div class="header-title">My People</div>
+      <button class="btn-add" onclick="openAddPerson()">＋</button>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="search-input" type="text" id="searchInput" placeholder="Search people…" oninput="renderList()">
+  </div>
+
+  <div class="cat-scroll" id="catFilter">
+    <button class="cat-pill active" data-cat="all" onclick="setCatFilter('all', this)">All</button>
+    <button class="cat-pill" data-cat="work" onclick="setCatFilter('work', this)">💼 Work</button>
+    <button class="cat-pill" data-cat="friend" onclick="setCatFilter('friend', this)">👋 Friend</button>
+    <button class="cat-pill" data-cat="family" onclick="setCatFilter('family', this)">🏠 Family</button>
+    <button class="cat-pill" data-cat="other" onclick="setCatFilter('other', this)">✦ Other</button>
+  </div>
+
+  <div class="people-list" id="peopleList"></div>
+</div>
+
+<!-- ══ VIEW: PERSON DETAIL ══ -->
+<div class="view" id="viewDetail">
+  <div class="detail-header">
+    <button class="btn-back" onclick="showList()">← Back</button>
+    <div class="detail-person-row">
+      <div class="detail-avatar" id="detailAvatar"></div>
+      <div class="detail-name" id="detailName"></div>
+      <div class="detail-actions">
+        <button class="btn-icon-sm" onclick="openEditPerson()" title="Edit person" style="color:var(--text-muted)">✎</button>
+        <button class="btn-icon-sm" onclick="confirmDeletePerson()" title="Delete person">🗑</button>
+      </div>
+    </div>
+    <div class="detail-cat-badge" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:72px">
+      <span class="cat-badge" id="detailCatBadge"></span>
+      <span id="detailMeta" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted)"></span>
+    </div>
+    <div id="detailBirthday" style="margin-left:72px;margin-top:6px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);display:none">
+      🎂 <span id="detailBirthdayText"></span>
+    </div>
+  </div>
+
+  <div class="entries-header">
+    <span class="entries-label">Notes</span>
+    <button class="btn-add-entry" onclick="openAddEntry()">＋ Add note</button>
+  </div>
+
+  <div class="entries-list" id="entriesList"></div>
+</div>
+
+<!-- ══ MODAL: Add Person ══ -->
+<div class="modal-overlay" id="modalAddPerson" onclick="handleOverlay(event, 'modalAddPerson')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">New person</div>
+
+    <div class="input-group">
+      <label class="input-label">Name</label>
+      <input type="text" id="inputName" placeholder="e.g. Jane Doe">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="input-group">
+        <label class="input-label">Company</label>
+        <input type="text" id="inputCompany" placeholder="e.g. Acme">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Role</label>
+        <input type="text" id="inputRole" placeholder="e.g. Designer">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">Birthday <span style="color:var(--text-faint);font-weight:400">(optional)</span></label>
+      <div style="display:grid;grid-template-columns:1fr 2fr 1.5fr;gap:12px">
+        <select id="inputBirthdayDay"><option value="">Day</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select>
+        <select id="inputBirthdayMonth"><option value="">Month</option><option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+        <select id="inputBirthdayYear"><option value="">Year</option><option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option><option value="2022">2022</option><option value="2021">2021</option><option value="2020">2020</option><option value="2019">2019</option><option value="2018">2018</option><option value="2017">2017</option><option value="2016">2016</option><option value="2015">2015</option><option value="2014">2014</option><option value="2013">2013</option><option value="2012">2012</option><option value="2011">2011</option><option value="2010">2010</option><option value="2009">2009</option><option value="2008">2008</option><option value="2007">2007</option><option value="2006">2006</option><option value="2005">2005</option><option value="2004">2004</option><option value="2003">2003</option><option value="2002">2002</option><option value="2001">2001</option><option value="2000">2000</option><option value="1999">1999</option><option value="1998">1998</option><option value="1997">1997</option><option value="1996">1996</option><option value="1995">1995</option><option value="1994">1994</option><option value="1993">1993</option><option value="1992">1992</option><option value="1991">1991</option><option value="1990">1990</option><option value="1989">1989</option><option value="1988">1988</option><option value="1987">1987</option><option value="1986">1986</option><option value="1985">1985</option><option value="1984">1984</option><option value="1983">1983</option><option value="1982">1982</option><option value="1981">1981</option><option value="1980">1980</option><option value="1979">1979</option><option value="1978">1978</option><option value="1977">1977</option><option value="1976">1976</option><option value="1975">1975</option><option value="1974">1974</option><option value="1973">1973</option><option value="1972">1972</option><option value="1971">1971</option><option value="1970">1970</option><option value="1969">1969</option><option value="1968">1968</option><option value="1967">1967</option><option value="1966">1966</option><option value="1965">1965</option><option value="1964">1964</option><option value="1963">1963</option><option value="1962">1962</option><option value="1961">1961</option><option value="1960">1960</option><option value="1959">1959</option><option value="1958">1958</option><option value="1957">1957</option><option value="1956">1956</option><option value="1955">1955</option><option value="1954">1954</option><option value="1953">1953</option><option value="1952">1952</option><option value="1951">1951</option><option value="1950">1950</option><option value="1949">1949</option><option value="1948">1948</option><option value="1947">1947</option><option value="1946">1946</option><option value="1945">1945</option><option value="1944">1944</option><option value="1943">1943</option><option value="1942">1942</option><option value="1941">1941</option><option value="1940">1940</option><option value="1939">1939</option><option value="1938">1938</option><option value="1937">1937</option><option value="1936">1936</option><option value="1935">1935</option><option value="1934">1934</option><option value="1933">1933</option><option value="1932">1932</option><option value="1931">1931</option><option value="1930">1930</option><option value="1929">1929</option><option value="1928">1928</option><option value="1927">1927</option></select>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">Category</label>
+      <div class="tag-grid" id="catGrid">
+        <button class="tag-option cat-work selected" data-cat="work" onclick="selectCat(this)">💼 Work</button>
+        <button class="tag-option cat-friend" data-cat="friend" onclick="selectCat(this)">👋 Friend</button>
+        <button class="tag-option cat-family" data-cat="family" onclick="selectCat(this)">🏠 Family</button>
+        <button class="tag-option cat-other" data-cat="other" onclick="selectCat(this)">✦ Other</button>
+      </div>
+    </div>
+
+    <button class="btn-confirm" onclick="savePerson()">Add person</button>
+    <button class="btn-cancel" onclick="closeModal('modalAddPerson')">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: Add Entry ══ -->
+<div class="modal-overlay" id="modalAddEntry" onclick="handleOverlay(event, 'modalAddEntry')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="entryModalTitle">Add note</div>
+
+    <div class="input-group">
+      <label class="input-label">Tag</label>
+      <div class="tag-grid" id="entryTagGrid">
+        <button class="tag-option" style="border-color:rgba(160,196,245,0.3);color:var(--blue)" data-tag="personal" onclick="selectEntryTag(this)">👤 Personal</button>
+        <button class="tag-option selected" style="border-color:rgba(184,245,160,0.3);color:var(--green)" data-tag="hobby" onclick="selectEntryTag(this)">🎯 Hobby</button>
+        <button class="tag-option" style="border-color:rgba(245,216,122,0.3);color:var(--amber)" data-tag="work" onclick="selectEntryTag(this)">💼 Work</button>
+        <button class="tag-option" style="border-color:rgba(196,160,245,0.3);color:var(--purple)" data-tag="family" onclick="selectEntryTag(this)">🏠 Family</button>
+        <button class="tag-option" style="border-color:rgba(245,160,160,0.3);color:var(--red)" data-tag="health" onclick="selectEntryTag(this)">❤️ Health</button>
+        <button class="tag-option" style="border-color:var(--border);color:var(--text-muted)" data-tag="other" onclick="selectEntryTag(this)">✦ Other</button>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label class="input-label" style="margin-bottom:0">Note</label>
+        <button id="micBtn" onclick="toggleVoice()" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text-muted);font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;padding:4px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s">
+          <span id="micIcon">🎤</span><span id="micLabel">Speak</span>
+        </button>
+      </div>
+      <textarea id="inputEntry" placeholder="e.g. Just got a puppy, training for a marathon, renovating kitchen…"></textarea>
+      <div id="micStatus" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:6px;display:none;letter-spacing:0.05em"></div>
+    </div>
+
+    <button class="btn-confirm" id="entryConfirmBtn" onclick="saveEntry()">Save note</button>
+    <button class="btn-cancel" onclick="closeModal('modalAddEntry')">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: Delete confirm ══ -->
+<div class="modal-overlay" id="modalDeletePerson" onclick="handleOverlay(event, 'modalDeletePerson')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--red)">Remove person?</div>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px;line-height:1.6;">This will delete <strong id="deletePersonName" style="color:var(--text)"></strong> and all their notes. This cannot be undone.</p>
+    <button class="btn-confirm" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(245,160,160,0.2)" onclick="deletePerson()">Yes, remove</button>
+    <button class="btn-cancel" onclick="closeModal('modalDeletePerson')">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: Delete Entry confirm ══ -->
+<div class="modal-overlay" id="modalDeleteEntry" onclick="handleOverlay(event, 'modalDeleteEntry')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--red)">Delete note?</div>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:12px;line-height:1.6;">This cannot be undone.</p>
+    <p id="deleteEntryPreview" style="color:var(--text);font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:24px;line-height:1.6;"></p>
+    <button class="btn-confirm" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(245,160,160,0.2)" onclick="confirmDeleteEntry()">Yes, delete</button>
+    <button class="btn-cancel" onclick="closeModal('modalDeleteEntry')">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: Edit Person ══ -->
+<div class="modal-overlay" id="modalEditPerson" onclick="handleOverlay(event, 'modalEditPerson')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Edit person</div>
+
+    <div class="input-group">
+      <label class="input-label">Name</label>
+      <input type="text" id="editName" placeholder="e.g. Jane Doe">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="input-group">
+        <label class="input-label">Company</label>
+        <input type="text" id="editCompany" placeholder="e.g. Acme">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Role</label>
+        <input type="text" id="editRole" placeholder="e.g. Designer">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">Birthday <span style="color:var(--text-faint);font-weight:400">(optional)</span></label>
+      <div style="display:grid;grid-template-columns:1fr 2fr 1.5fr;gap:12px">
+        <select id="editBirthdayDay"><option value="">Day</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select>
+        <select id="editBirthdayMonth"><option value="">Month</option><option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+        <select id="editBirthdayYear"><option value="">Year</option><option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option><option value="2022">2022</option><option value="2021">2021</option><option value="2020">2020</option><option value="2019">2019</option><option value="2018">2018</option><option value="2017">2017</option><option value="2016">2016</option><option value="2015">2015</option><option value="2014">2014</option><option value="2013">2013</option><option value="2012">2012</option><option value="2011">2011</option><option value="2010">2010</option><option value="2009">2009</option><option value="2008">2008</option><option value="2007">2007</option><option value="2006">2006</option><option value="2005">2005</option><option value="2004">2004</option><option value="2003">2003</option><option value="2002">2002</option><option value="2001">2001</option><option value="2000">2000</option><option value="1999">1999</option><option value="1998">1998</option><option value="1997">1997</option><option value="1996">1996</option><option value="1995">1995</option><option value="1994">1994</option><option value="1993">1993</option><option value="1992">1992</option><option value="1991">1991</option><option value="1990">1990</option><option value="1989">1989</option><option value="1988">1988</option><option value="1987">1987</option><option value="1986">1986</option><option value="1985">1985</option><option value="1984">1984</option><option value="1983">1983</option><option value="1982">1982</option><option value="1981">1981</option><option value="1980">1980</option><option value="1979">1979</option><option value="1978">1978</option><option value="1977">1977</option><option value="1976">1976</option><option value="1975">1975</option><option value="1974">1974</option><option value="1973">1973</option><option value="1972">1972</option><option value="1971">1971</option><option value="1970">1970</option><option value="1969">1969</option><option value="1968">1968</option><option value="1967">1967</option><option value="1966">1966</option><option value="1965">1965</option><option value="1964">1964</option><option value="1963">1963</option><option value="1962">1962</option><option value="1961">1961</option><option value="1960">1960</option><option value="1959">1959</option><option value="1958">1958</option><option value="1957">1957</option><option value="1956">1956</option><option value="1955">1955</option><option value="1954">1954</option><option value="1953">1953</option><option value="1952">1952</option><option value="1951">1951</option><option value="1950">1950</option><option value="1949">1949</option><option value="1948">1948</option><option value="1947">1947</option><option value="1946">1946</option><option value="1945">1945</option><option value="1944">1944</option><option value="1943">1943</option><option value="1942">1942</option><option value="1941">1941</option><option value="1940">1940</option><option value="1939">1939</option><option value="1938">1938</option><option value="1937">1937</option><option value="1936">1936</option><option value="1935">1935</option><option value="1934">1934</option><option value="1933">1933</option><option value="1932">1932</option><option value="1931">1931</option><option value="1930">1930</option><option value="1929">1929</option><option value="1928">1928</option><option value="1927">1927</option></select>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">Category</label>
+      <div class="tag-grid" id="editCatGrid">
+        <button class="tag-option cat-work" data-cat="work" onclick="selectEditCat(this)">💼 Work</button>
+        <button class="tag-option cat-friend" data-cat="friend" onclick="selectEditCat(this)">👋 Friend</button>
+        <button class="tag-option cat-family" data-cat="family" onclick="selectEditCat(this)">🏠 Family</button>
+        <button class="tag-option cat-other" data-cat="other" onclick="selectEditCat(this)">✦ Other</button>
+      </div>
+    </div>
+
+    <button class="btn-confirm" onclick="saveEditPerson()">Save changes</button>
+    <button class="btn-cancel" onclick="closeModal('modalEditPerson')">Cancel</button>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<script>
+  // ── SUPABASE ──
+  const SUPA_URL = 'https://nomelgzfldrhvtssxntn.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vbWVsZ3pmbGRyaHZ0c3N4bnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MDcwNDMsImV4cCI6MjA5NDA4MzA0M30.RcFJHmEdcQIQDl_f6d3mUPm697noLaACoSA5rNkMNyc';
+  const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+  let db = { people: [] };
+  let currentPersonId = null;
+  let activeCatFilter = 'all';
+  let selectedCat = 'work';
+  let selectedEntryTag = 'hobby';
+  const swipeState = {};
+
+  // ── AUTH ──
+  async function doLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginError');
+    err.style.display = 'none';
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+    const { error } = await supa.auth.signInWithPassword({ email, password });
+    btn.textContent = 'Sign in';
+    btn.disabled = false;
+    if (error) {
+      err.textContent = error.message;
+      err.style.display = 'block';
+    }
+  }
+
+  async function doLogout() {
+    await supa.auth.signOut();
+  }
+
+  // ── DATA ──
+  async function load() {
+    // Load all people with their entries
+    const { data: people, error } = await supa
+      .from('people')
+      .select('*, entries(*)')
+      .order('name');
+    if (error) { showFlash('⚠️ Error loading data'); console.error(error); return; }
+    db.people = (people || []).map(p => ({
+      ...p,
+      entries: (p.entries || []).sort((a,b) => new Date(a.date) - new Date(b.date))
+    }));
+    renderList();
+  }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+  // ── ROUTING ──
+  function showList() {
+    document.getElementById('viewList').classList.add('active');
+    document.getElementById('viewDetail').classList.remove('active');
+    renderList();
+  }
+
+  function showDetail(id) {
+    currentPersonId = id;
+    document.getElementById('viewList').classList.remove('active');
+    document.getElementById('viewDetail').classList.add('active');
+    renderDetail();
+  }
+
+  // ── RENDER LIST ──
+  function highlight(text, q) {
+    if (!q) return escHtml(text);
+    const idx = text.toLowerCase().indexOf(q);
+    if (idx === -1) return escHtml(text);
+    return escHtml(text.slice(0, idx)) +
+      '<mark style="background:var(--amber);color:#1a1200;border-radius:2px;padding:0 2px">' +
+      escHtml(text.slice(idx, idx + q.length)) + '</mark>' +
+      escHtml(text.slice(idx + q.length));
+  }
+
+  function renderList() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    let people = [...db.people];
+    if (activeCatFilter !== 'all') people = people.filter(p => p.category === activeCatFilter);
+    if (q) {
+      people = people.filter(p => {
+        const nameMatch = p.name.toLowerCase().includes(q);
+        const noteMatch = (p.entries || []).some(e => e.text.toLowerCase().includes(q));
+        return nameMatch || noteMatch;
+      });
+    }
+    people.sort((a, b) => a.name.localeCompare(b.name));
+
+    const el = document.getElementById('peopleList');
+    if (people.length === 0) {
+      const msg = q ? `No results for "<strong>${escHtml(q)}</strong>"` : 'No people yet.<br>Tap ＋ to add someone.';
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">${q ? '🔍' : '👥'}</div><div class="empty-text">${msg}</div></div>`;
+      return;
+    }
+
+    el.innerHTML = people.map(p => {
+      const initials = p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      // Find matching note snippet if search is active
+      let previewText = '';
+      let previewHtml = '';
+      if (q && !(p.name.toLowerCase().includes(q))) {
+        // Name didn't match — find the first matching note and show it
+        const matchingEntry = (p.entries || []).find(e => e.text.toLowerCase().includes(q));
+        if (matchingEntry) {
+          const idx = matchingEntry.text.toLowerCase().indexOf(q);
+          const start = Math.max(0, idx - 20);
+          const snippet = (start > 0 ? '…' : '') + matchingEntry.text.slice(start, idx + q.length + 30) + (idx + q.length + 30 < matchingEntry.text.length ? '…' : '');
+          previewHtml = highlight(snippet, q);
+        }
+      } else {
+        const lastEntry = p.entries && p.entries.length ? p.entries[p.entries.length-1] : null;
+        previewHtml = lastEntry ? escHtml(lastEntry.text.slice(0,40)) + (lastEntry.text.length > 40 ? '…' : '') : 'No notes yet';
+      }
+      const count = p.entries ? p.entries.length : 0;
+      return `
+        <div class="person-card" onclick="showDetail('${p.id}')">
+          <div class="person-avatar avatar-${p.category}">${initials}</div>
+          <div class="person-info">
+            <div class="person-name">${escHtml(p.name)}</div>
+            ${(p.role || p.company) ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:2px">${escHtml([p.role,p.company].filter(Boolean).join(' · '))}</div>` : ''}
+            <div class="person-last">${previewHtml}</div>
+          </div>
+          <div class="person-meta">
+            <span class="cat-badge cat-${p.category}">${catLabel(p.category)}</span>
+            ${(() => { try { if (!p.birthday) return ''; const bp=p.birthday.split(' '); const mn=['January','February','March','April','May','June','July','August','September','October','November','December']; const today=new Date(); const diff=(new Date(today.getFullYear(),mn.indexOf(bp[1]),parseInt(bp[0]))-today)/(864e5); return (diff>=0&&diff<=14)?'<span style="font-size:14px">🎂</span>':''; } catch(e){return '';} })()}
+            <span class="person-count">${count} note${count !== 1 ? 's' : ''}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── RENDER DETAIL ──
+  const ALL_TAGS = ['personal','hobby','work','family','health','other'];
+
+  function renderDetail() {
+    const p = db.people.find(x => x.id === currentPersonId);
+    if (!p) { showList(); return; }
+    const initials = p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    document.getElementById('detailAvatar').className = `detail-avatar avatar-${p.category}`;
+    document.getElementById('detailAvatar').textContent = initials;
+    document.getElementById('detailName').textContent = p.name;
+    document.getElementById('detailCatBadge').className = `cat-badge cat-${p.category}`;
+    document.getElementById('detailCatBadge').textContent = catLabel(p.category);
+    document.getElementById('deletePersonName').textContent = p.name;
+
+    // Company / role
+    const metaParts = [p.role, p.company].filter(Boolean);
+    const metaEl = document.getElementById('detailMeta');
+    metaEl.textContent = metaParts.join(' · ');
+
+    // Birthday
+    const bdEl = document.getElementById('detailBirthday');
+    const bdText = document.getElementById('detailBirthdayText');
+    if (p.birthday) {
+      bdEl.style.display = 'block';
+      try {
+        const bdParts = p.birthday.split(' ');
+        const bdDay = parseInt(bdParts[0]);
+        const bdMonthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const bdMonth = bdMonthNames.indexOf(bdParts[1]);
+        const today = new Date();
+        const thisYearBd = new Date(today.getFullYear(), bdMonth, bdDay);
+        const diff = (thisYearBd - today) / (1000*60*60*24);
+        if (diff >= 0 && diff <= 14) {
+          bdEl.style.color = 'var(--amber)';
+          bdText.textContent = p.birthday + ' — coming up soon! 🎉';
+        } else {
+          bdEl.style.color = 'var(--text-muted)';
+          bdText.textContent = p.birthday;
+        }
+      } catch(e) {
+        bdEl.style.color = 'var(--text-muted)';
+        bdText.textContent = p.birthday;
+      }
+    } else {
+      bdEl.style.display = 'none';
+    }
+
+    const entries = p.entries || [];
+    const list = document.getElementById('entriesList');
+
+    if (entries.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-text">No notes yet.<br>Tap "+ Add note" to log something.</div></div>`;
+      return;
+    }
+
+    // Group entries by tag, preserving original indices for delete
+    const groups = {};
+    entries.forEach((e, i) => {
+      if (!groups[e.tag]) groups[e.tag] = [];
+      groups[e.tag].push({ ...e, origIndex: i });
+    });
+
+    let html = '';
+    ALL_TAGS.forEach(tag => {
+      if (!groups[tag] || groups[tag].length === 0) return;
+      const tagEntries = groups[tag].slice().sort((a, b) => new Date(b.date) - new Date(a.date)); // newest first within section
+      html += `
+        <div class="entry-section">
+          <div class="entry-section-header">
+            <span class="entry-section-title" style="${tagStyle(tag)}">${tagLabel(tag)}</span>
+            <button class="btn-add-section" onclick="openAddEntryWithTag('${tag}')">＋</button>
+          </div>
+          <div class="entry-section-items">
+            ${tagEntries.map(e => {
+              const d = new Date(e.date);
+              const dateStr = d.toLocaleDateString('en-GB', {day:'2-digit', month:'short'});
+              return `
+                <div class="entry-row" id="ewrap-${e.origIndex}">
+                  <div class="entry-delete-bg">DELETE ✕</div>
+                  <div class="entry-inner" id="eitem-${e.origIndex}"
+                    ontouchstart="entrySwipeStart(event,${e.origIndex})"
+                    ontouchmove="entrySwipeMove(event,${e.origIndex})"
+                    ontouchend="entrySwipeEnd(event,${e.origIndex})">
+                    <div class="entry-row-content">
+                      <div class="entry-text">${escHtml(e.text)}</div>
+                      <div class="entry-row-footer">
+                        <span class="entry-date">${dateStr}</span>
+                        <div style="display:flex;gap:8px;align-items:center">
+                          <button class="entry-edit-btn" onclick="openEditEntry(${e.origIndex})">✎</button>
+                          <button class="entry-delete-btn" onclick="openDeleteEntry(${e.origIndex})">✕</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    });
+
+    list.innerHTML = html;
+  }
+
+  // ── CATEGORY FILTER ──
+  function setCatFilter(cat, btn) {
+    activeCatFilter = cat;
+    document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    renderList();
+  }
+
+
+  // ── EDIT PERSON ──
+  let selectedEditCat = 'work';
+
+  function openEditPerson() {
+    const p = db.people.find(x => x.id === currentPersonId);
+    if (!p) return;
+    selectedEditCat = p.category;
+    document.getElementById('editName').value = p.name || '';
+    document.getElementById('editCompany').value = p.company || '';
+    document.getElementById('editRole').value = p.role || '';
+    const months2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    if (p.birthday) {
+      const bdParts = p.birthday.split(' ');
+      document.getElementById('editBirthdayDay').value = bdParts[0] || '';
+      document.getElementById('editBirthdayMonth').value = bdParts[1] ? months2.indexOf(bdParts[1]) + 1 : '';
+      document.getElementById('editBirthdayYear').value = bdParts[2] || '';
+    } else {
+      document.getElementById('editBirthdayDay').value = '';
+      document.getElementById('editBirthdayMonth').value = '';
+      document.getElementById('editBirthdayYear').value = '';
+    }
+    document.querySelectorAll('#editCatGrid .tag-option').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cat === p.category);
+    });
+    openModal('modalEditPerson');
+    setTimeout(() => document.getElementById('editName').focus(), 350);
+  }
+
+  function selectEditCat(btn) {
+    selectedEditCat = btn.dataset.cat;
+    document.querySelectorAll('#editCatGrid .tag-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  async function saveEditPerson() {
+    const name = document.getElementById('editName').value.trim();
+    if (!name) { document.getElementById('editName').style.borderColor = 'var(--red)'; setTimeout(()=>document.getElementById('editName').style.borderColor='',1000); return; }
+    const eBdDay = document.getElementById('editBirthdayDay').value;
+    const eBdMonth = document.getElementById('editBirthdayMonth').value;
+    const months3 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const eBdYear = document.getElementById('editBirthdayYear').value;
+    const birthday = (eBdDay && eBdMonth) ? eBdDay + ' ' + months3[parseInt(eBdMonth)-1] + (eBdYear ? ' ' + eBdYear : '') : '';
+    const updates = {
+      name,
+      company: document.getElementById('editCompany').value.trim(),
+      role: document.getElementById('editRole').value.trim(),
+      birthday,
+      category: selectedEditCat
+    };
+    const { error } = await supa.from('people').update(updates).eq('id', currentPersonId);
+    if (error) { showFlash('⚠️ Error saving'); return; }
+    closeModal('modalEditPerson');
+    await load();
+    showDetail(currentPersonId);
+    showFlash('✅ Changes saved');
+  }
+
+  // ── ADD PERSON ──
+  function openAddPerson() {
+    document.getElementById('inputName').value = '';
+    document.getElementById('inputCompany').value = '';
+    document.getElementById('inputRole').value = '';
+    document.getElementById('inputBirthdayDay').value = '';
+    document.getElementById('inputBirthdayMonth').value = '';
+    document.getElementById('inputBirthdayYear').value = '';
+    selectedCat = 'work';
+    document.querySelectorAll('#catGrid .tag-option').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cat === 'work');
+    });
+    openModal('modalAddPerson');
+    setTimeout(() => document.getElementById('inputName').focus(), 350);
+  }
+
+  function selectCat(btn) {
+    selectedCat = btn.dataset.cat;
+    document.querySelectorAll('#catGrid .tag-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  async function savePerson() {
+    const name = document.getElementById('inputName').value.trim();
+    if (!name) { document.getElementById('inputName').style.borderColor = 'var(--red)'; setTimeout(()=>document.getElementById('inputName').style.borderColor='',1000); return; }
+    const company = document.getElementById('inputCompany').value.trim();
+    const role = document.getElementById('inputRole').value.trim();
+    const bdDay = document.getElementById('inputBirthdayDay').value;
+    const bdMonth = document.getElementById('inputBirthdayMonth').value;
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const bdYear = document.getElementById('inputBirthdayYear').value;
+    const birthday = (bdDay && bdMonth) ? bdDay + ' ' + months[parseInt(bdMonth)-1] + (bdYear ? ' ' + bdYear : '') : '';
+    const newPerson = { id: uid(), name, company, role, birthday, category: selectedCat };
+    const { error } = await supa.from('people').insert(newPerson);
+    if (error) { showFlash('⚠️ Error saving'); return; }
+    closeModal('modalAddPerson');
+    await load();
+    showFlash('✅ ' + name + ' added');
+  }
+
+  // ── ADD ENTRY ──
+  function openAddEntry(preselect) {
+    editingEntryIndex = null;
+    document.getElementById('inputEntry').value = '';
+    document.getElementById('entryModalTitle').textContent = 'Add note';
+    document.getElementById('entryConfirmBtn').textContent = 'Save note';
+    selectedEntryTag = preselect || 'hobby';
+    document.querySelectorAll('#entryTagGrid .tag-option').forEach(b => {
+      b.classList.toggle('selected', b.dataset.tag === selectedEntryTag);
+    });
+    openModal('modalAddEntry');
+    setTimeout(() => document.getElementById('inputEntry').focus(), 350);
+  }
+
+  function openAddEntryWithTag(tag) {
+    openAddEntry(tag);
+  }
+
+  function selectEntryTag(btn) {
+    selectedEntryTag = btn.dataset.tag;
+    document.querySelectorAll('#entryTagGrid .tag-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  let editingEntryIndex = null;
+
+  async function saveEntry() {
+    const text = document.getElementById('inputEntry').value.trim();
+    if (!text) { document.getElementById('inputEntry').style.borderColor = 'var(--red)'; setTimeout(()=>document.getElementById('inputEntry').style.borderColor='',1000); return; }
+    const p = db.people.find(x => x.id === currentPersonId);
+    if (!p) return;
+    if (editingEntryIndex !== null) {
+      const entry = p.entries[editingEntryIndex];
+      const { error } = await supa.from('entries').update({ text, tag: selectedEntryTag, date: new Date().toISOString() }).eq('id', entry.id);
+      if (error) { showFlash('⚠️ Error saving'); return; }
+      editingEntryIndex = null;
+      showFlash('✏️ Note updated');
+    } else {
+      const newEntry = { id: uid(), person_id: currentPersonId, tag: selectedEntryTag, text, date: new Date().toISOString() };
+      const { error } = await supa.from('entries').insert(newEntry);
+      if (error) { showFlash('⚠️ Error saving'); return; }
+      showFlash('📝 Note saved');
+    }
+    closeModal('modalAddEntry');
+    await load();
+    showDetail(currentPersonId);
+  }
+
+  function openEditEntry(index) {
+    const p = db.people.find(x => x.id === currentPersonId);
+    if (!p) return;
+    const entry = p.entries[index];
+    editingEntryIndex = index;
+    selectedEntryTag = entry.tag;
+    document.getElementById('inputEntry').value = entry.text;
+    document.getElementById('entryModalTitle').textContent = 'Edit note';
+    document.getElementById('entryConfirmBtn').textContent = 'Save changes';
+    document.querySelectorAll('#entryTagGrid .tag-option').forEach(b => {
+      b.classList.toggle('selected', b.dataset.tag === entry.tag);
+    });
+    openModal('modalAddEntry');
+    setTimeout(() => document.getElementById('inputEntry').focus(), 350);
+  }
+
+  // ── DELETE ENTRY ──
+  let pendingDeleteEntry = null;
+
+  function openDeleteEntry(index) {
+    pendingDeleteEntry = index;
+    const p = db.people.find(x => x.id === currentPersonId);
+    if (!p) return;
+    const entry = p.entries[index];
+    const preview = document.getElementById('deleteEntryPreview');
+    if (preview) preview.textContent = entry ? entry.text.slice(0, 80) + (entry.text.length > 80 ? '…' : '') : '';
+    openModal('modalDeleteEntry');
+  }
+
+  async function confirmDeleteEntry() {
+    const p = db.people.find(x => x.id === currentPersonId);
+    if (!p || pendingDeleteEntry === null) return;
+    const entry = p.entries[pendingDeleteEntry];
+    const { error } = await supa.from('entries').delete().eq('id', entry.id);
+    if (error) { showFlash('⚠️ Error deleting'); return; }
+    closeModal('modalDeleteEntry');
+    await load();
+    showDetail(currentPersonId);
+    showFlash('🗑 Note deleted');
+    pendingDeleteEntry = null;
+  }
+
+  // ── DELETE PERSON ──
+  function confirmDeletePerson() { openModal('modalDeletePerson'); }
+
+  async function deletePerson() {
+    const { error } = await supa.from('people').delete().eq('id', currentPersonId);
+    if (error) { showFlash('⚠️ Error deleting'); return; }
+    closeModal('modalDeletePerson');
+    await load();
+    showFlash('🗑 Person removed');
+    showList();
+  }
+
+  // ── SWIPE TO DELETE ENTRIES ──
+  function entrySwipeStart(e, index) {
+    const t = e.touches[0];
+    swipeState[index] = { startX: t.clientX, startY: t.clientY, dx: 0, active: true };
+  }
+
+  function entrySwipeMove(e, index) {
+    const s = swipeState[index];
+    if (!s || !s.active) return;
+    const t = e.touches[0];
+    const dx = t.clientX - s.startX;
+    const dy = t.clientY - s.startY;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(s.dx) < 5) { s.active = false; return; }
+    if (dx > 0) return;
+    s.dx = dx;
+    const el = document.getElementById('eitem-' + index);
+    if (el) { el.classList.add('swiping'); el.style.transform = 'translateX(' + Math.max(dx, -110) + 'px)'; }
+  }
+
+  function entrySwipeEnd(e, index) {
+    const s = swipeState[index];
+    if (!s) return;
+    const el = document.getElementById('eitem-' + index);
+    if (el) {
+      el.classList.remove('swiping');
+      if (Math.abs(s.dx) > 80) {
+        el.style.transform = 'translateX(-110px)';
+        setTimeout(() => openDeleteEntry(index), 150);
+      } else {
+        el.style.transform = '';
+      }
+    }
+    delete swipeState[index];
+  }
+
+  // ── MODALS ──
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function handleOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+  // ── HELPERS ──
+  function catLabel(c) {
+    return {work:'💼 Work', friend:'👋 Friend', family:'🏠 Family', other:'✦ Other'}[c] || c;
+  }
+
+  function tagLabel(t) {
+    return {personal:'👤 Personal', hobby:'🎯 Hobby', work:'💼 Work', family:'🏠 Family', health:'❤️ Health', other:'✦ Other'}[t] || t;
+  }
+
+  function tagStyle(t) {
+    const styles = {
+      personal: 'background:var(--blue-dim);color:var(--blue)',
+      hobby:    'background:var(--green-dim);color:var(--green)',
+      work:     'background:var(--amber-dim);color:var(--amber)',
+      family:   'background:var(--purple-dim);color:var(--purple)',
+      health:   'background:var(--red-dim);color:var(--red)',
+      other:    'background:var(--surface2);color:var(--text-muted)',
+    };
+    return styles[t] || styles.other;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function showFlash(msg) {
+    const el = document.getElementById('flash');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  }
+
+
+  // ── VOICE INPUT ──
+  let recognition = null;
+  let isListening = false;
+
+  function toggleVoice() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      showFlash('🎤 Voice not supported in this browser');
+      return;
+    }
+    if (isListening) {
+      stopVoice();
+    } else {
+      startVoice();
+    }
+  }
+
+  function startVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'nl-BE'; // Dutch (Belgium) — change to 'en-GB' if preferred
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      isListening = true;
+      const btn = document.getElementById('micBtn');
+      btn.style.background = 'var(--red-dim)';
+      btn.style.borderColor = 'rgba(245,160,160,0.4)';
+      btn.style.color = 'var(--red)';
+      document.getElementById('micIcon').textContent = '⏹';
+      document.getElementById('micLabel').textContent = 'Stop';
+      const status = document.getElementById('micStatus');
+      status.style.display = 'block';
+      status.textContent = 'Listening…';
+    };
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      const textarea = document.getElementById('inputEntry');
+      const existing = textarea.value;
+      if (final) {
+        textarea.value = (existing ? existing + ' ' : '') + final.trim();
+        document.getElementById('micStatus').textContent = '✓ Got it';
+      } else {
+        document.getElementById('micStatus').textContent = interim || 'Listening…';
+      }
+    };
+
+    recognition.onerror = (e) => {
+      stopVoice();
+      const msgs = { 'not-allowed': '🎤 Microphone access denied', 'no-speech': '🎤 No speech detected', 'network': '🎤 Network error' };
+      showFlash(msgs[e.error] || '🎤 Error: ' + e.error);
+    };
+
+    recognition.onend = () => { stopVoice(); };
+
+    recognition.start();
+  }
+
+  function stopVoice() {
+    if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+    isListening = false;
+    const btn = document.getElementById('micBtn');
+    if (!btn) return;
+    btn.style.background = 'var(--surface2)';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text-muted)';
+    document.getElementById('micIcon').textContent = '🎤';
+    document.getElementById('micLabel').textContent = 'Speak';
+    const status = document.getElementById('micStatus');
+    if (status.textContent === 'Listening…') status.style.display = 'none';
+  }
+
+  // ── INIT: listen for auth state ──
+  supa.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      // Logged in — show app
+      document.getElementById('viewLogin').classList.remove('active');
+      document.getElementById('viewList').classList.add('active');
+      await load();
+    } else {
+      // Logged out — show login
+      document.getElementById('viewList').classList.remove('active');
+      document.getElementById('viewDetail').classList.remove('active');
+      document.getElementById('viewLogin').classList.add('active');
+      db = { people: [] };
+    }
+  });
+
+  // Allow Enter key on login
+  document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
