@@ -1100,7 +1100,7 @@
       }
       const count = p.entries ? p.entries.length : 0;
       return `
-        <div class="person-card${isDesktop() && p.id === currentPersonId ? ' selected' : ''}" onclick="showDetail('${p.id}')">
+        <div class="person-card" onclick="showDetail('${p.id}')">
           <div class="person-avatar avatar-${p.category}">${initials}</div>
           <div class="person-info">
             <div class="person-name">${escHtml(p.name)}</div>
