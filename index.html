@@ -1453,7 +1453,7 @@
       showFlash('✅ ' + name + ' added');
       return;
     }
-    const { error } = await supa.from('people').insert(newPerson);
+    const { error } = await supa.from('people').insert({ id: newPerson.id, name, company, role, birthday, category: selectedCat });
     if (error) { showFlash('⚠️ Error saving'); return; }
     closeModal('modalAddPerson');
     await load();
