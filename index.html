@@ -1616,25 +1616,36 @@
     setThemeIcons(isLight);
   }
 
-  // ── INIT: listen for auth state ──
-  document.addEventListener('DOMContentLoaded', () => {
+  // ── INIT ──
+  document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
+    document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+    // Check existing session first (handles page refresh)
+    const { data: { session } } = await supa.auth.getSession();
+    if (session) {
+      document.getElementById('viewLogin').classList.remove('active');
+      document.getElementById('viewList').classList.add('active');
+      document.getElementById('loggedInEmail').textContent = session.user.email || '';
+      document.getElementById('loggedInEmail').title = session.user.email || '';
+      await load();
+    }
+
+    // Then listen for future changes (login/logout)
     supa.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
+      if (event === 'SIGNED_IN') {
         document.getElementById('viewLogin').classList.remove('active');
         document.getElementById('viewList').classList.add('active');
-        const email = session.user.email || '';
-        document.getElementById('loggedInEmail').textContent = email;
-        document.getElementById('loggedInEmail').title = email;
+        document.getElementById('loggedInEmail').textContent = session.user.email || '';
+        document.getElementById('loggedInEmail').title = session.user.email || '';
         await load();
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         document.getElementById('viewList').classList.remove('active');
         document.getElementById('viewDetail').classList.remove('active');
         document.getElementById('viewLogin').classList.add('active');
         db = { people: [] };
       }
     });
-    document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
   });
 </script>
 </body>
