@@ -32,6 +32,28 @@
     --radius-sm: 10px;
   }
 
+  body.light {
+    --bg: #f5f3ef;
+    --surface: #ffffff;
+    --surface2: #eeece8;
+    --border: #dedad4;
+    --blue: #1a5fa8;
+    --blue-dim: #ddeaf8;
+    --purple: #6b3fbf;
+    --purple-dim: #ede8f8;
+    --green: #2d7a1f;
+    --green-dim: #e4f5e0;
+    --amber: #a06800;
+    --amber-dim: #fdf3d8;
+    --red: #c0392b;
+    --red-dim: #fde8e6;
+    --text: #1a1916;
+    --text-muted: #8a8680;
+    --text-faint: #c5c2bc;
+  }
+
+  body.light::before { opacity: 0.15; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   body {
@@ -723,6 +745,9 @@
 <!-- ══ VIEW: LOGIN ══ -->
 <div class="view active" id="viewLogin">
   <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;max-width:430px;margin:0 auto">
+    <div style="position:absolute;top:24px;right:24px">
+      <button id="loginThemeBtn" onclick="toggleTheme()" title="Toggle theme" style="width:34px;height:34px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg></button>
+    </div>
     <div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;margin-bottom:6px">My People</div>
     <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:0.1em;margin-bottom:48px">PERSONAL CRM</div>
 
@@ -750,6 +775,7 @@
       <div style="display:flex;align-items:center;gap:8px">
         <span id="loggedInEmail" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
         <button class="btn-add" onclick="openAddPerson()">＋</button>
+        <button id="themeBtn" onclick="toggleTheme()" title="Toggle theme" style="width:34px;height:34px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg></button>
         <button onclick="doLogout()" title="Sign out" style="width:34px;height:34px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s" onmouseenter="this.style.color='var(--red)'" onmouseleave="this.style.color='var(--text-muted)'">⏻</button>
       </div>
     </div>
@@ -1552,6 +1578,33 @@
     const status = document.getElementById('micStatus');
     if (status.textContent === 'Listening…') status.style.display = 'none';
   }
+
+  // ── THEME ──
+  const SUN_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg>';
+  const MOON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+  function setThemeIcons(isLight) {
+    const icon = isLight ? MOON_SVG : SUN_SVG;
+    const btn = document.getElementById('themeBtn');
+    const loginBtn = document.getElementById('loginThemeBtn');
+    if (btn) btn.innerHTML = icon;
+    if (loginBtn) loginBtn.innerHTML = icon;
+  }
+
+  function toggleTheme() {
+    const isLight = document.body.classList.toggle('light');
+    setThemeIcons(isLight);
+    localStorage.setItem('crm_theme', isLight ? 'light' : 'dark');
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem('crm_theme');
+    const isLight = saved === 'light';
+    if (isLight) document.body.classList.add('light');
+    setThemeIcons(isLight);
+  }
+
+  initTheme();
 
   // ── INIT: listen for auth state ──
   supa.auth.onAuthStateChange(async (event, session) => {
