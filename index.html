@@ -564,6 +564,52 @@
 
   .entry-edit-btn:active { color: var(--amber); }
 
+  .entry-pin-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px;
+    margin: -8px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .entry-pin-btn.pinned { color: var(--amber); }
+  .entry-pin-btn:active { color: var(--amber); }
+
+  .entry-pinned-indicator {
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    margin-right: 4px;
+  }
+
+  .btn-show-all {
+    width: 100%;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: all 0.15s;
+  }
+
+  .btn-show-all:active { background: var(--surface2); color: var(--text); }
+
   .entry-text {
     font-size: 14px;
     line-height: 1.6;
@@ -776,6 +822,7 @@
       </div>
       <div id="loginError" style="color:var(--red);font-size:13px;font-family:'DM Mono',monospace;margin-bottom:12px;display:none"></div>
       <button class="btn-confirm" id="loginBtn" onclick="doLogin()">Sign in</button>
+      <button onclick="loadDemo()" style="background:none;border:none;color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;cursor:pointer;padding:14px;width:100%;transition:color 0.15s" onmouseenter="this.style.color='var(--text)'" onmouseleave="this.style.color='var(--text-muted)'">Continue without account</button>
     </div>
   </div>
 </div>
@@ -1005,6 +1052,37 @@
   const swipeState = {};
 
   // ── AUTH ──
+  let demoMode = false;
+
+  function loadDemo() {
+    demoMode = true;
+    db.people = [
+      {
+        id: 'demo1', name: 'Cécile Martin', category: 'work', company: 'Acme', role: 'Designer', birthday: '14 March',
+        entries: [
+          { id: 'de1', tag: 'hobby', text: 'Training for a marathon in October', date: '2026-05-01T10:00:00Z', pinned: true },
+          { id: 'de2', tag: 'hobby', text: 'Loves hiking in the Ardennes', date: '2026-04-10T10:00:00Z', pinned: false },
+          { id: 'de3', tag: 'personal', text: 'Getting married in August', date: '2026-05-05T10:00:00Z', pinned: true },
+          { id: 'de4', tag: 'work', text: 'Just got promoted to team lead', date: '2026-03-01T10:00:00Z', pinned: false },
+          { id: 'de5', tag: 'hobby', text: 'Started cooking Italian food', date: '2026-02-15T10:00:00Z', pinned: false },
+          { id: 'de6', tag: 'hobby', text: 'Tried a new climbing gym', date: '2026-01-20T10:00:00Z', pinned: false },
+        ]
+      },
+      {
+        id: 'demo2', name: 'Jan Peeters', category: 'friend', company: '', role: '', birthday: '3 June 1990',
+        entries: [
+          { id: 'de7', tag: 'personal', text: 'Currently painting their house', date: '2026-04-20T10:00:00Z', pinned: false },
+          { id: 'de8', tag: 'health', text: 'Recovering from knee surgery', date: '2026-03-10T10:00:00Z', pinned: true },
+        ]
+      },
+      { id: 'demo3', name: 'Sophie Dubois', category: 'family', company: '', role: '', birthday: '', entries: [] }
+    ];
+    document.getElementById('viewLogin').classList.remove('active');
+    document.getElementById('viewList').classList.add('active');
+    document.getElementById('loggedInEmail').textContent = 'Demo mode';
+    renderList();
+  }
+
   async function doLogin() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
@@ -1189,17 +1267,56 @@
       return;
     }
 
-    // Group entries by tag, preserving original indices for delete
+    // Group entries by tag, preserving original indices
     const groups = {};
     entries.forEach((e, i) => {
       if (!groups[e.tag]) groups[e.tag] = [];
       groups[e.tag].push({ ...e, origIndex: i });
     });
 
+    const COLLAPSE_AT = 3;
+
+    function renderEntryRow(e) {
+      const d = new Date(e.date);
+      const dateStr = d.toLocaleDateString('en-GB', {day:'2-digit', month:'short'});
+      const pinIcon = e.pinned
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>'
+        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+      return `
+        <div class="entry-row" id="ewrap-${e.origIndex}">
+          <div class="entry-delete-bg">DELETE ✕</div>
+          <div class="entry-inner" id="eitem-${e.origIndex}"
+            ontouchstart="entrySwipeStart(event,${e.origIndex})"
+            ontouchmove="entrySwipeMove(event,${e.origIndex})"
+            ontouchend="entrySwipeEnd(event,${e.origIndex})">
+            <div class="entry-row-content">
+              <div class="entry-text">${escHtml(e.text)}</div>
+              <div class="entry-row-footer">
+                <span class="entry-date">${dateStr}</span>
+                <div style="display:flex;gap:4px;align-items:center">
+                  <button class="entry-pin-btn ${e.pinned ? 'pinned' : ''}" onclick="togglePin(${e.origIndex})" title="${e.pinned ? 'Unpin' : 'Pin'}">${pinIcon}</button>
+                  <button class="entry-edit-btn" onclick="openEditEntry(${e.origIndex})">✎</button>
+                  <button class="entry-delete-btn" onclick="openDeleteEntry(${e.origIndex})">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
     let html = '';
     ALL_TAGS.forEach(tag => {
       if (!groups[tag] || groups[tag].length === 0) return;
-      const tagEntries = groups[tag].slice().sort((a, b) => new Date(b.date) - new Date(a.date)); // newest first within section
+      // Pinned first, then newest first
+      const tagEntries = groups[tag].slice().sort((a, b) => {
+        if (b.pinned && !a.pinned) return 1;
+        if (a.pinned && !b.pinned) return -1;
+        return new Date(b.date) - new Date(a.date);
+      });
+      const visible = tagEntries.slice(0, COLLAPSE_AT);
+      const hidden = tagEntries.slice(COLLAPSE_AT);
+      const sectionId = 'section-' + tag + '-' + currentPersonId;
+
       html += `
         <div class="entry-section">
           <div class="entry-section-header">
@@ -1207,29 +1324,14 @@
             <button class="btn-add-section" onclick="openAddEntryWithTag('${tag}')">＋</button>
           </div>
           <div class="entry-section-items">
-            ${tagEntries.map(e => {
-              const d = new Date(e.date);
-              const dateStr = d.toLocaleDateString('en-GB', {day:'2-digit', month:'short'});
-              return `
-                <div class="entry-row" id="ewrap-${e.origIndex}">
-                  <div class="entry-delete-bg">DELETE ✕</div>
-                  <div class="entry-inner" id="eitem-${e.origIndex}"
-                    ontouchstart="entrySwipeStart(event,${e.origIndex})"
-                    ontouchmove="entrySwipeMove(event,${e.origIndex})"
-                    ontouchend="entrySwipeEnd(event,${e.origIndex})">
-                    <div class="entry-row-content">
-                      <div class="entry-text">${escHtml(e.text)}</div>
-                      <div class="entry-row-footer">
-                        <span class="entry-date">${dateStr}</span>
-                        <div style="display:flex;gap:8px;align-items:center">
-                          <button class="entry-edit-btn" onclick="openEditEntry(${e.origIndex})">✎</button>
-                          <button class="entry-delete-btn" onclick="openDeleteEntry(${e.origIndex})">✕</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>`;
-            }).join('')}
+            ${visible.map(e => renderEntryRow(e)).join('')}
+            ${hidden.length > 0 ? `
+              <div id="${sectionId}-more" style="display:none">
+                ${hidden.map(e => renderEntryRow(e)).join('')}
+              </div>
+              <button class="btn-show-all" onclick="toggleSection('${sectionId}')">
+                <span id="${sectionId}-label">+ ${hidden.length} older note${hidden.length > 1 ? 's' : ''}</span>
+              </button>` : ''}
           </div>
         </div>`;
     });
@@ -1295,6 +1397,14 @@
       birthday,
       category: selectedEditCat
     };
+    if (demoMode) {
+      const p = db.people.find(x => x.id === currentPersonId);
+      if (p) Object.assign(p, updates);
+      closeModal('modalEditPerson');
+      showDetail(currentPersonId);
+      showFlash('✅ Changes saved');
+      return;
+    }
     const { error } = await supa.from('people').update(updates).eq('id', currentPersonId);
     if (error) { showFlash('⚠️ Error saving'); return; }
     closeModal('modalEditPerson');
@@ -1335,11 +1445,19 @@
     const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const bdYear = document.getElementById('inputBirthdayYear').value;
     const birthday = (bdDay && bdMonth) ? bdDay + ' ' + months[parseInt(bdMonth)-1] + (bdYear ? ' ' + bdYear : '') : '';
-    const newPerson = { id: uid(), name, company, role, birthday, category: selectedCat };
+    const newPerson = { id: uid(), name, company, role, birthday, category: selectedCat, entries: [] };
+    if (demoMode) {
+      db.people.push(newPerson);
+      closeModal('modalAddPerson');
+      renderList();
+      showFlash('✅ ' + name + ' added');
+      return;
+    }
     const { error } = await supa.from('people').insert(newPerson);
     if (error) { showFlash('⚠️ Error saving'); return; }
     closeModal('modalAddPerson');
     await load();
+    renderList();
     showFlash('✅ ' + name + ' added');
   }
 
@@ -1376,12 +1494,29 @@
     if (!p) return;
     if (editingEntryIndex !== null) {
       const entry = p.entries[editingEntryIndex];
+      if (demoMode) {
+        entry.text = text;
+        entry.tag = selectedEntryTag;
+        entry.date = new Date().toISOString();
+        editingEntryIndex = null;
+        closeModal('modalAddEntry');
+        showDetail(currentPersonId);
+        showFlash('✏️ Note updated');
+        return;
+      }
       const { error } = await supa.from('entries').update({ text, tag: selectedEntryTag, date: new Date().toISOString() }).eq('id', entry.id);
       if (error) { showFlash('⚠️ Error saving'); return; }
       editingEntryIndex = null;
       showFlash('✏️ Note updated');
     } else {
-      const newEntry = { id: uid(), person_id: currentPersonId, tag: selectedEntryTag, text, date: new Date().toISOString() };
+      const newEntry = { id: uid(), person_id: currentPersonId, tag: selectedEntryTag, text, date: new Date().toISOString(), pinned: false };
+      if (demoMode) {
+        p.entries.push(newEntry);
+        closeModal('modalAddEntry');
+        showDetail(currentPersonId);
+        showFlash('📝 Note saved');
+        return;
+      }
       const { error } = await supa.from('entries').insert(newEntry);
       if (error) { showFlash('⚠️ Error saving'); return; }
       showFlash('📝 Note saved');
@@ -1424,6 +1559,14 @@
     const p = db.people.find(x => x.id === currentPersonId);
     if (!p || pendingDeleteEntry === null) return;
     const entry = p.entries[pendingDeleteEntry];
+    if (demoMode) {
+      p.entries.splice(pendingDeleteEntry, 1);
+      closeModal('modalDeleteEntry');
+      showDetail(currentPersonId);
+      showFlash('🗑 Note deleted');
+      pendingDeleteEntry = null;
+      return;
+    }
     const { error } = await supa.from('entries').delete().eq('id', entry.id);
     if (error) { showFlash('⚠️ Error deleting'); return; }
     closeModal('modalDeleteEntry');
@@ -1437,12 +1580,52 @@
   function confirmDeletePerson() { openModal('modalDeletePerson'); }
 
   async function deletePerson() {
+    if (demoMode) {
+      db.people = db.people.filter(p => p.id !== currentPersonId);
+      closeModal('modalDeletePerson');
+      showFlash('🗑 Person removed');
+      renderList();
+      showList();
+      return;
+    }
     const { error } = await supa.from('people').delete().eq('id', currentPersonId);
     if (error) { showFlash('⚠️ Error deleting'); return; }
     closeModal('modalDeletePerson');
     await load();
     showFlash('🗑 Person removed');
+    renderList();
     showList();
+  }
+
+  // ── PIN ──
+  async function togglePin(index) {
+    const p = db.people.find(x => x.id === currentPersonId);
+    if (!p) return;
+    const entry = p.entries[index];
+    const newPinned = !entry.pinned;
+    if (demoMode) {
+      entry.pinned = newPinned;
+      showDetail(currentPersonId);
+      return;
+    }
+    const { error } = await supa.from('entries').update({ pinned: newPinned }).eq('id', entry.id);
+    if (error) { showFlash('⚠️ Error updating'); return; }
+    await load();
+    showDetail(currentPersonId);
+  }
+
+  // ── COLLAPSE ──
+  function toggleSection(sectionId) {
+    const moreEl = document.getElementById(sectionId + '-more');
+    const labelEl = document.getElementById(sectionId + '-label');
+    const btn = labelEl.closest('.btn-show-all');
+    if (!moreEl) return;
+    const isHidden = moreEl.style.display === 'none';
+    moreEl.style.display = isHidden ? 'block' : 'none';
+    const count = moreEl.querySelectorAll('.entry-row').length;
+    labelEl.textContent = isHidden
+      ? '− Show less'
+      : `+ ${count} older note${count > 1 ? 's' : ''}`;
   }
 
   // ── SWIPE TO DELETE ENTRIES ──
