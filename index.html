@@ -747,7 +747,11 @@
     <div class="header-label">Personal CRM</div>
     <div class="header-row">
       <div class="header-title">My People</div>
-      <button class="btn-add" onclick="openAddPerson()">＋</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="loggedInEmail" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <button class="btn-add" onclick="openAddPerson()">＋</button>
+        <button onclick="doLogout()" title="Sign out" style="width:34px;height:34px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s" onmouseenter="this.style.color='var(--red)'" onmouseleave="this.style.color='var(--text-muted)'">⏻</button>
+      </div>
     </div>
   </div>
 
@@ -984,15 +988,21 @@
 
   // ── DATA ──
   async function load() {
-    // Load all people with their entries
-    const { data: people, error } = await supa
+    const { data: people, error: peopleError } = await supa
       .from('people')
-      .select('*, entries(*)')
+      .select('*')
       .order('name');
-    if (error) { showFlash('⚠️ Error loading data'); console.error(error); return; }
+    if (peopleError) { showFlash('⚠️ Error loading people'); console.error(peopleError); return; }
+
+    const { data: entries, error: entriesError } = await supa
+      .from('entries')
+      .select('*')
+      .order('date');
+    if (entriesError) { showFlash('⚠️ Error loading notes'); console.error(entriesError); return; }
+
     db.people = (people || []).map(p => ({
       ...p,
-      entries: (p.entries || []).sort((a,b) => new Date(a.date) - new Date(b.date))
+      entries: (entries || []).filter(e => e.person_id === p.id)
     }));
     renderList();
   }
@@ -1546,12 +1556,13 @@
   // ── INIT: listen for auth state ──
   supa.auth.onAuthStateChange(async (event, session) => {
     if (session) {
-      // Logged in — show app
       document.getElementById('viewLogin').classList.remove('active');
       document.getElementById('viewList').classList.add('active');
+      const email = session.user.email || '';
+      document.getElementById('loggedInEmail').textContent = email;
+      document.getElementById('loggedInEmail').title = email;
       await load();
     } else {
-      // Logged out — show login
       document.getElementById('viewList').classList.remove('active');
       document.getElementById('viewDetail').classList.remove('active');
       document.getElementById('viewLogin').classList.add('active');
