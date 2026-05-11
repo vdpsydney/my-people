@@ -1603,27 +1603,34 @@
     if (loginBtn) loginBtn.innerHTML = icon;
   }
 
+  function themeKey() {
+    const uid = localStorage.getItem('crm_uid');
+    return uid ? `crm_theme_${uid}` : 'crm_theme';
+  }
+
   function toggleTheme() {
     const isLight = document.body.classList.toggle('light');
     setThemeIcons(isLight);
-    localStorage.setItem('crm_theme', isLight ? 'light' : 'dark');
+    localStorage.setItem(themeKey(), isLight ? 'light' : 'dark');
   }
 
-  function initTheme() {
-    const saved = localStorage.getItem('crm_theme');
+  function initTheme(userId) {
+    if (userId) localStorage.setItem('crm_uid', userId);
+    const saved = localStorage.getItem(themeKey());
     const isLight = saved === 'light';
     if (isLight) document.body.classList.add('light');
+    else document.body.classList.remove('light');
     setThemeIcons(isLight);
   }
 
   // ── INIT ──
   document.addEventListener('DOMContentLoaded', async () => {
-    initTheme();
     document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
     // Check existing session first (handles page refresh)
     const { data: { session } } = await supa.auth.getSession();
     if (session) {
+      initTheme(session.user.id);
       document.getElementById('viewLogin').classList.remove('active');
       document.getElementById('viewList').classList.add('active');
       document.getElementById('loggedInEmail').textContent = session.user.email || '';
@@ -1634,6 +1641,7 @@
     // Then listen for future changes (login/logout)
     supa.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN') {
+        initTheme(session.user.id);
         document.getElementById('viewLogin').classList.remove('active');
         document.getElementById('viewList').classList.add('active');
         document.getElementById('loggedInEmail').textContent = session.user.email || '';
