@@ -75,75 +75,9 @@
     opacity: 0.5;
   }
 
-  /* ── VIEWS: MOBILE ── */
-  .view { display: none; max-width: 430px; margin: 0 auto; padding-bottom: 48px; }
+  /* ── VIEWS ── */
+  .view { display: none; max-width: 680px; margin: 0 auto; padding-bottom: 48px; }
   .view.active { display: block; }
-
-  /* ── VIEWS: DESKTOP ── */
-  @media (min-width: 900px) {
-    body { overflow: hidden; height: 100vh; }
-
-    #viewLogin {
-      display: none;
-      max-width: 100%;
-      height: 100vh;
-    }
-    #viewLogin.active { display: flex; align-items: center; justify-content: center; }
-
-    .app-columns {
-      display: grid;
-      grid-template-columns: 380px 1fr;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    #viewList {
-      display: block !important;
-      max-width: none;
-      padding-bottom: 48px;
-      height: 100vh;
-      overflow-y: auto;
-      border-right: 1px solid var(--border);
-    }
-
-    #viewList::-webkit-scrollbar { width: 4px; }
-    #viewList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    #viewDetail {
-      max-width: none;
-      padding-bottom: 48px;
-      height: 100vh;
-      overflow-y: auto;
-    }
-
-    #viewDetail::-webkit-scrollbar { width: 4px; }
-    #viewDetail::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    .btn-back { display: none !important; }
-
-    .desktop-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      gap: 12px;
-      color: var(--text-faint);
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      letter-spacing: 0.08em;
-    }
-
-    .person-card.selected {
-      border-color: var(--amber);
-      background: var(--amber-dim);
-    }
-  }
-
-  @media (max-width: 899px) {
-    .app-columns { display: contents; }
-    .desktop-empty { display: none; }
-  }
 
   /* ── HEADER ── */
   .header {
@@ -832,7 +766,6 @@
   </div>
 </div>
 
-<div class="app-columns">
 <!-- ══ VIEW: PEOPLE LIST ══ -->
 <div class="view" id="viewList">
   <div class="header">
@@ -863,15 +796,9 @@
 
   <div class="people-list" id="peopleList"></div>
 </div>
-</div><!-- end app-columns -->
 
 <!-- ══ VIEW: PERSON DETAIL ══ -->
 <div class="view" id="viewDetail">
-  <div class="desktop-empty" id="desktopEmpty">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:0.3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    <span>Select a person</span>
-  </div>
-  <div id="detailContent" style="display:none">
   <div class="detail-header">
     <button class="btn-back" onclick="showList()">← Back</button>
     <div class="detail-person-row">
@@ -897,7 +824,6 @@
   </div>
 
   <div class="entries-list" id="entriesList"></div>
-  </div><!-- end detailContent -->
 </div>
 
 <!-- ══ MODAL: Add Person ══ -->
