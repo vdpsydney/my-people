@@ -1517,7 +1517,7 @@
         showFlash('📝 Note saved');
         return;
       }
-      const { error } = await supa.from('entries').insert(newEntry);
+      const { error } = await supa.from('entries').insert({ id: newEntry.id, person_id: newEntry.person_id, tag: newEntry.tag, text: newEntry.text, date: newEntry.date, pinned: newEntry.pinned });
       if (error) { showFlash('⚠️ Error saving'); return; }
       showFlash('📝 Note saved');
     }
