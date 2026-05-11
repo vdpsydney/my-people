@@ -43,7 +43,7 @@
     --purple-dim: #ede8f8;
     --green: #2d7a1f;
     --green-dim: #e4f5e0;
-    --amber: #a06800;
+    --amber: #c47f00;
     --amber-dim: #fdf3d8;
     --red: #c0392b;
     --red-dim: #fde8e6;
@@ -681,7 +681,7 @@
     font-weight: 700;
     cursor: pointer;
     background: var(--amber);
-    color: #1a1200;
+    color: #ffffff;
     margin-top: 8px;
     transition: transform 0.15s;
   }
@@ -1604,27 +1604,26 @@
     setThemeIcons(isLight);
   }
 
-  initTheme();
-
   // ── INIT: listen for auth state ──
-  supa.auth.onAuthStateChange(async (event, session) => {
-    if (session) {
-      document.getElementById('viewLogin').classList.remove('active');
-      document.getElementById('viewList').classList.add('active');
-      const email = session.user.email || '';
-      document.getElementById('loggedInEmail').textContent = email;
-      document.getElementById('loggedInEmail').title = email;
-      await load();
-    } else {
-      document.getElementById('viewList').classList.remove('active');
-      document.getElementById('viewDetail').classList.remove('active');
-      document.getElementById('viewLogin').classList.add('active');
-      db = { people: [] };
-    }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    supa.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        document.getElementById('viewLogin').classList.remove('active');
+        document.getElementById('viewList').classList.add('active');
+        const email = session.user.email || '';
+        document.getElementById('loggedInEmail').textContent = email;
+        document.getElementById('loggedInEmail').title = email;
+        await load();
+      } else {
+        document.getElementById('viewList').classList.remove('active');
+        document.getElementById('viewDetail').classList.remove('active');
+        document.getElementById('viewLogin').classList.add('active');
+        db = { people: [] };
+      }
+    });
+    document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
   });
-
-  // Allow Enter key on login
-  document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 </script>
 </body>
 </html>
