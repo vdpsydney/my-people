@@ -1479,8 +1479,14 @@
   }
 
   // ── MODALS ──
-  function openModal(id) { document.getElementById(id).classList.add('open'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function openModal(id) {
+    // Close any other open modals first
+    document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open'));
+    document.getElementById(id).classList.add('open');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
   function handleOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 
   // ── HELPERS ──
