@@ -1022,6 +1022,10 @@
 
   async function doLogout() {
     await supa.auth.signOut();
+    document.getElementById('viewList').classList.remove('active');
+    document.getElementById('viewDetail').classList.remove('active');
+    document.getElementById('viewLogin').classList.add('active');
+    db = { people: [] };
   }
 
   // ── DATA ──
